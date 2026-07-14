@@ -1,52 +1,64 @@
-# PLAN — Cycle 1: 거터 게임 (Gutter Game)
+# PLAN — Cycle 2: 스페어 보너스 (Spare Bonus)
+
+## 0. 이전 사이클
+
+Cycle 1(거터 게임)은 완료·커밋됨: `Game.roll`/`Game.score`가 `sum(self.rolls)`로
+최소 구현되어 있다. 이번 사이클은 그 구현을 실제 프레임 기반 스코어링으로
+발전시키는 첫 단계다.
 
 ## 1. 목표 (RED 1단계)
 
-**단 하나의 동작**: 20번의 롤이 전부 0핀(거터볼)이면, `score()`는 `0`을 반환한다.
+**단 하나의 동작**: 스페어(한 프레임에서 2롤 합이 10)를 기록한 프레임은
+`10 + 다음 1롤의 핀 수`를 프레임 점수로 받는다.
 
-이번 사이클의 목적은 스코어링 규칙이 아니라, `Game` 클래스와 `roll()` / `score()`의
-가장 단순한 골격(스킵 프레임/스트라이크/스페어 없음)을 세우는 것이다.
+현재 구현(`sum(self.rolls)`)은 스페어 보너스를 반영하지 않으므로, 아래 테스트는
+현재 구현으로는 **다른 값을 반환하며 실패**한다 (핵심: 이번엔 오픈 프레임 테스트처럼
+우연히 통과하지 않는, 진짜 RED를 유발하는 케이스를 고른다).
 
 ## 2. 작성할 실패 테스트
 
 - 파일: `test_bowling.py`
-- 테스트: `test_all_gutter_balls_scores_zero`
+- 테스트: `test_spare_adds_next_roll_as_bonus`
 
 ```python
-from bowling import Game
-
-def test_all_gutter_balls_scores_zero():
+def test_spare_adds_next_roll_as_bonus():
     game = Game()
-    for _ in range(20):
-        game.roll(0)
+    game.roll(5)
+    game.roll(5)   # 1프레임: 스페어
+    game.roll(3)   # 2프레임 첫 롤 — 스페어 보너스로도 사용됨
+    game.roll(0)   # 2프레임 두 번째 롤
+    for _ in range(16):
+        game.roll(0)  # 3~10프레임: 전부 거터
 
-    assert game.score() == 0
+    # 1프레임: 10 + 3(보너스) = 13
+    # 2프레임: 3 + 0 = 3
+    # 3~10프레임: 0
+    assert game.score() == 16
 ```
 
-**예상 실패 이유**: `bowling.py` 모듈과 `Game` 클래스가 아직 존재하지 않으므로
-`ModuleNotFoundError`(또는 `ImportError`)로 실패해야 한다.
+**예상 실패 이유**: 현재 `score()`는 단순 합산(`5+5+3+0*17=13`)이라 `16`이 아닌
+`13`을 반환하여 `assert`가 실패한다 (에러가 아니라 값이 다른 assertion 실패).
 
 ## 3. 구현 방향 (GREEN에서 진행 — 지금은 작성하지 않음)
 
-- 파일: `bowling.py`
-- `Game.__init__`: 롤 기록용 리스트(`self.rolls = []`) 초기화
-- `Game.roll(pins)`: `self.rolls.append(pins)`
-- `Game.score()`: 이번 사이클을 통과시키는 최소 구현 — 예: `sum(self.rolls)`
-  (스트라이크/스페어 보너스 로직은 다음 사이클들에서 하나씩 추가하며 자연스럽게 대체된다)
+`score()`를 프레임 단위로 순회하는 방식으로 교체한다:
+
+- `self.rolls`를 인덱스로 순회하며 한 번에 한 프레임씩 처리
+- 두 롤의 합이 10이면(스페어) `10 + rolls[다음 인덱스]`를 프레임 점수로 더하고
+  인덱스를 2칸 전진
+- 그 외(오픈 프레임)에는 `rolls[i] + rolls[i+1]`을 더하고 인덱스를 2칸 전진
+- 10프레임 도달 시 반복 종료 (이번 사이클엔 스트라이크/10프레임 보너스 없음 —
+  아래 "범위 아님" 참고)
 
 ## 4. 이번 사이클 범위가 아닌 것
 
-- 오픈 프레임(스트라이크/스페어 없는 일반 프레임) 합산 — 다음 사이클
-- 스페어 보너스 (10 + 다음 1롤)
-- 스트라이크 보너스 (10 + 다음 2롤)
-- 퍼펙트 게임(300점)
-- 10프레임 보너스 롤 처리
-
-각각은 별도의 RED-GREEN-REVIEW 사이클로 하나씩 다룬다.
+- 스트라이크 보너스 (10 + 다음 2롤) — 다음 사이클
+- 퍼펙트 게임(300점) — 이후 사이클
+- 10프레임 스페어/스트라이크의 보너스 롤 처리 — 이후 사이클
 
 ## 5. 완료 기준
 
-- [ ] `test_bowling.py::test_all_gutter_balls_scores_zero`가 RED 상태에서
-      `ModuleNotFoundError`/`ImportError`로 실패하는 것을 확인
+- [ ] `test_bowling.py::test_spare_adds_next_roll_as_bonus`가 RED 상태에서
+      `13 != 16` 형태로 실패하는 것을 확인
 - [ ] 위 실패를 사용자가 검토·승인
 - [ ] 승인 후 PLAN.md + 실패 테스트 commit
