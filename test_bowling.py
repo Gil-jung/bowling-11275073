@@ -54,3 +54,11 @@ def test_tenth_frame_spare_gets_one_bonus_roll():
     game.roll(3)       # 보너스 롤
 
     assert game.score() == 13
+
+
+def test_perfect_game_scores_300():
+    game = Game()
+    for _ in range(12):
+        game.roll(10)
+
+    assert game.score() == 300
