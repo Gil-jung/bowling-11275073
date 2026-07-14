@@ -30,3 +30,15 @@ def test_strike_adds_next_two_rolls_as_bonus():
         game.roll(0)  # 3~10프레임: 전부 거터
 
     assert game.score() == 24
+
+
+def test_tenth_frame_strike_gets_two_bonus_rolls():
+    game = Game()
+    for _ in range(9):
+        game.roll(0)
+        game.roll(0)   # 1~9프레임: 전부 거터
+    game.roll(10)      # 10프레임: 스트라이크
+    game.roll(3)       # 보너스 롤 1
+    game.roll(4)       # 보너스 롤 2
+
+    assert game.score() == 17
