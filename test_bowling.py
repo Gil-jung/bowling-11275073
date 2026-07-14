@@ -19,3 +19,14 @@ def test_spare_adds_next_roll_as_bonus():
         game.roll(0)  # 3~10프레임: 전부 거터
 
     assert game.score() == 16
+
+
+def test_strike_adds_next_two_rolls_as_bonus():
+    game = Game()
+    game.roll(10)  # 1프레임: 스트라이크 (롤 1개만 소비)
+    game.roll(3)
+    game.roll(4)   # 2프레임: 3 + 4 = 7 (오픈)
+    for _ in range(16):
+        game.roll(0)  # 3~10프레임: 전부 거터
+
+    assert game.score() == 24
